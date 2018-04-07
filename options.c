@@ -29,7 +29,7 @@ const opt_t *options = (const opt_t*) &_options;
 
 void print_usage(void)
 {
-	printf("usage: sxiv [-abcfhiopqrtvZ] [-A FRAMERATE] [-e WID] [-G GAMMA] "
+	printf("usage: sxiv [-abcfhijopqrtvZ] [-A FRAMERATE] [-e WID] [-G GAMMA] "
 	       "[-g GEOMETRY] [-N NAME] [-n NUM] [-S DELAY] [-s MODE] [-z ZOOM] "
 	       "FILES...\n");
 }
@@ -52,6 +52,7 @@ void parse_options(int argc, char **argv)
 	_options.to_stdout = false;
 	_options.recursive = false;
 	_options.startnum = 0;
+	_options.loaddir = false;
 
 	_options.scalemode = SCALE_DOWN;
 	_options.zoom = 1.0;
@@ -71,7 +72,7 @@ void parse_options(int argc, char **argv)
 	_options.clean_cache = false;
 	_options.private_mode = false;
 
-	while ((opt = getopt(argc, argv, "A:abce:fG:g:hin:N:opqrS:s:tvZz:")) != -1) {
+	while ((opt = getopt(argc, argv, "A:abce:fG:g:hijn:N:opqrS:s:tvZz:")) != -1) {
 		switch (opt) {
 			case '?':
 				print_usage();
@@ -115,7 +116,14 @@ void parse_options(int argc, char **argv)
 			case 'i':
 				_options.from_stdin = true;
 				break;
+			case 'j':
+				if (_options.startnum != 0)
+				    error(EXIT_FAILURE, 0, "Canot specify start number with -j");
+				_options.loaddir = true;
+				break;
 			case 'n':
+				if (_options.loaddir)
+				    error(EXIT_FAILURE, 0, "Canot specify start number with -j");
 				n = strtol(optarg, &end, 0);
 				if (*end != '\0' || n <= 0)
 					error(EXIT_FAILURE, 0, "Invalid argument for option -n: %s", optarg);

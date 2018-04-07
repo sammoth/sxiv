@@ -264,6 +264,7 @@ struct opt {
 	bool recursive;
 	int filecnt;
 	int startnum;
+	bool loaddir;
 
 	/* image: */
 	scalemode_t scalemode;
