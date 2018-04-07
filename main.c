@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <libgen.h>
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
 
@@ -819,13 +820,14 @@ void setup_signal(int sig, void (*handler)(int sig))
 
 int main(int argc, char **argv)
 {
-	int i, start;
+	int i, j, start, startnum;
 	size_t n;
 	ssize_t len;
 	char *filename;
 	const char *homedir, *dsuffix = "";
 	struct stat fstats;
 	r_dir_t dir;
+	bool is_dir;
 
 	setup_signal(SIGCHLD, sigchld);
 	setup_signal(SIGPIPE, SIG_IGN);
@@ -850,6 +852,8 @@ int main(int argc, char **argv)
 	else
 		filecnt = options->filecnt;
 
+	startnum = options->startnum;
+
 	files = emalloc(filecnt * sizeof(*files));
 	memset(files, 0, filecnt * sizeof(*files));
 	fileidx = 0;
@@ -872,9 +876,23 @@ int main(int argc, char **argv)
 			error(0, errno, "%s", filename);
 			continue;
 		}
-		if (!S_ISDIR(fstats.st_mode)) {
+		is_dir = S_ISDIR(fstats.st_mode);
+		if (!is_dir && !options->loaddir) {
 			check_add_file(filename, true);
 		} else {
+			char *start_filename = NULL;
+
+			if (!is_dir) {
+				if (startnum == 0) {
+					if ((start_filename = realpath(filename, NULL)) == NULL) {
+						error(0, errno, "%s", filename);
+						return 0;
+					}
+				}
+
+				filename = dirname(filename);
+			}
+
 			if (r_opendir(&dir, filename, options->recursive) < 0) {
 				error(0, errno, "%s", filename);
 				continue;
@@ -887,6 +905,22 @@ int main(int argc, char **argv)
 			r_closedir(&dir);
 			if (fileidx - start > 1)
 				qsort(files + start, fileidx - start, sizeof(fileinfo_t), fncmp);
+
+			if (start_filename != NULL) {
+				if (access(start_filename, R_OK) < 0) {
+					error(0, errno, "%s", start_filename);
+					return 0;
+				}
+
+				for (j = 0; j < fileidx-start; j++) {
+					if (strcmp(start_filename, files[start+j].path) == 0) {
+						startnum = start+j;
+						break;
+					}
+				}
+
+				free(start_filename);
+			}
 		}
 	}
 
@@ -894,7 +928,7 @@ int main(int argc, char **argv)
 		error(EXIT_FAILURE, 0, "No valid image file given, aborting");
 
 	filecnt = fileidx;
-	fileidx = options->startnum < filecnt ? options->startnum : 0;
+	fileidx = startnum < filecnt ? startnum : 0;
 
 	for (i = 0; i < ARRLEN(buttons); i++) {
 		if (buttons[i].cmd == i_cursor_navigate) {
