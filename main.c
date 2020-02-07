@@ -978,7 +978,7 @@ int main(int argc, char **argv)
         win.w = WIN_WIDTH;
 	win.h = WIN_HEIGHT;
 
-	if (mode == MODE_IMAGE && filecnt == 1) {
+	if (mode == MODE_IMAGE) {
 		win.h -= win.bar.h;
 
 		if (img.w <= win.w && img.h <= win.h) {
